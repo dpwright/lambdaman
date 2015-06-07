@@ -1,0 +1,20 @@
+name:                lambdaman
+version:             0.1.0.0
+synopsis:            A little game to test my ZX Spectrum haskell packages
+description:         A little game to test my ZX Spectrum haskell packages
+homepage:            https://github.com/dpwright/lambdaman
+license:             MIT
+license-file:        LICENSE
+author:              Daniel P. Wright
+maintainer:          dani@dpwright.com
+copyright:           (c) Daniel P. Wright 2015
+category:            Game
+build-type:          Simple
+cabal-version:       >=1.10
+
+executable lambdaman
+  main-is:             lambdaman.hs
+  build-depends:       base >=4.7 && <4.9,
+                       z80,
+                       zxspectrum
+  default-language:    Haskell2010
