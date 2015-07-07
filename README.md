@@ -1,6 +1,8 @@
 lambdaman
 =========
 
+![Lambdaman vs. the Centipede](lvtc.png)
+
 A little game to test my ZX Spectrum haskell packages.
 
 Licence
