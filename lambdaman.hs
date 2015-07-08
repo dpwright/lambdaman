@@ -6,7 +6,6 @@ import Data.Bits hiding (xor, bit)
 import Data.Word
 import Control.Monad (replicateM_)
 
-import Data.ByteString (pack)
 import qualified Data.ByteString as BS
 
 import Z80
@@ -432,7 +431,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     inc HL              -- Increment pointer.
     ld [seed] HL
     ret
-  seed <- labelled . defb $ pack [0,0] -- TODO dw command
+  seed <- labelled $ defb [0,0] -- TODO dw command
 
   -- Calculate address of attribute for character at (dispx, dispy).
   -- (source: https://chuntey.wordpress.com/2013/02/28/how-to-write-zx-spectrum-games-chapter-5/)
@@ -515,14 +514,14 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   lmName <- labelled $ defb lambdaman
   cpName <- labelled $ defb centipede
 
-  plx  <- labelled . defb $ pack [0]    -- player's x coordinate.
-  ply  <- labelled . defb $ pack [0]    -- player's y coordinate.
-  pbx  <- labelled . defb $ pack [0xff] -- player's bullet coordinates.
-  pby  <- labelled . defb $ pack [0xff]
-  dead <- labelled . defb $ pack [0]    -- flag - player dead when non-zero.
+  plx  <- labelled $ defb [0]    -- player's x coordinate.
+  ply  <- labelled $ defb [0]    -- player's y coordinate.
+  pbx  <- labelled $ defb [0xff] -- player's bullet coordinates.
+  pby  <- labelled $ defb [0xff]
+  dead <- labelled $ defb [0]    -- flag - player dead when non-zero.
 
-  lambdamanScore <- labelled . defb $ pack [0, 0]
-  centipedeScore <- labelled . defb $ pack [0, 0]
+  lambdamanScore <- labelled $ defb [0, 0]
+  centipedeScore <- labelled $ defb [0, 0]
 
   udgs <- labelled $ do
     udg [ "        "
@@ -564,7 +563,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   -- byte 2 = x (vertical) coordinate.
   -- byte 3 = y (horizontal) coordinate.
   let numseg = 10
-  segmnt <- labelled . replicateM_ (fromIntegral numseg) . defb $ pack [0,0,0]
-  segsLeft <- labelled . defb $ pack [numseg]
+  segmnt <- labelled . replicateM_ (fromIntegral numseg) $ defb [0,0,0]
+  segsLeft <- labelled $ defb [numseg]
 
   end
