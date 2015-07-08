@@ -13,8 +13,8 @@ import ZXSpectrum
 
 data Direction = DUp | DDown | DLeft | DRight
 
-coords :: Word16 -> Word16 -> Word16
-coords x y = y+x*256
+coords :: (Word8, Word8) -> Word16
+coords (x, y) = fromIntegral x .|. fromIntegral y `shiftL` 8
 
 main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   -- Load UDGs
@@ -32,17 +32,13 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   -- Set up score text
   ld A 2
   call CHAN_OPEN
-  printVal AT
-  printVal 21
-  printVal 0
+  setCursorPos (0, 21)
   ld DE lmName
   ld BC . fromIntegral $ BS.length lambdaman
   call PR_STRING
   ld BC [lambdamanScore]
   call OUT_NUM_1
-  printVal AT
-  printVal 21
-  printVal . fromIntegral $ 31 - 3 - BS.length centipede
+  setCursorPos (fromIntegral $ 31 - 3 - BS.length centipede, 21)
   ld HL centipedeScore
   call OUT_NUM_2
   ld DE cpName
@@ -53,15 +49,15 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   xor A               -- zeroise accumulator.
   ld [dead] A         -- set flag to say player is alive.
   ldVia A [segsLeft] numseg  -- Set segsLeft to equal numseg
-  ldVia HL [plx] $ coords 15 20  -- Set plx/ply to starting coords.
+  ldVia HL [plx] $ coords (15, 20) -- Set ply/plx to starting coords.
 
   ld HL segmnt        -- segment table.
   decLoopB 10 $ do
     ld [HL] 1         -- start off moving right.
     inc HL
-    ld [HL] 0         -- start at top.
+    ld [HL] B         -- use B register as x coordinate.
     inc HL
-    ld [HL] B         -- use B register as y coordinate.
+    ld [HL] 0         -- start at top.
     inc HL
 
   -- Now we want to fill the play area with mushrooms.
@@ -171,8 +167,8 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     ret
 
   let checkMushroom direction = do
-        let move DLeft  = dec B; move DRight = inc B
-            move DUp    = dec C; move DDown  = inc C
+        let move DLeft  = dec C; move DRight = inc C
+            move DUp    = dec B; move DDown  = inc B
         ld BC [plx]     -- current coords.
         move direction  -- move to the position we want to check.
         call atadd      -- get address of attribute at this position.
@@ -181,7 +177,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
 
   -- Move player left.
   mpl <- labelled $ do
-    ld HL ply           -- remember, y is the horizontal coord!
+    ld HL plx           -- remember, y is the horizontal coord!
     ld A [HL]           -- what's the current value?
     and A               -- is it zero?
     ret Z               -- yes - we can't go any further left.
@@ -191,7 +187,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
 
   -- Move player right.
   mpr <- labelled $ do
-    ld HL ply           -- remember, y is the horizontal coord!
+    ld HL plx           -- remember, y is the horizontal coord!
     ld A [HL]           -- what's the current value?
     cp 31               -- is it at the right edge (31)?
     ret Z               -- yes - we can't go any further right.
@@ -201,7 +197,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
 
   -- Move player up.
   mpu <- labelled $ do
-    ld HL plx           -- remember, x is the vertical coord!
+    ld HL ply           -- remember, x is the vertical coord!
     ld A [HL]           -- what's the current value?
     cp 0                -- is it at upper limit (0)?
     ret Z               -- yes - we can go no further then.
@@ -211,7 +207,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
 
   -- Move player down.
   mpd <- labelled $ do
-    ld HL plx           -- remember, x is the vertical coord!
+    ld HL ply           -- remember, x is the vertical coord!
     ld A [HL]           -- what's the current value?
     cp 20               -- is it already at the bottom (20)?
     ret Z               -- yes - we can't go down any more.
@@ -221,16 +217,16 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
 
   -- Fire a missile.
   fire <- labelled $ do
-    ld A [pbx]          -- bullet vertical coord.
+    ld A [pby]          -- bullet vertical coord.
     inc A               -- 255 is default value  increments to zero.
     ret NZ              -- bullet on screen  can't fire again.
     ld HL [plx]         -- player coordinates.
-    dec L               -- 1 square higher up.
+    dec H               -- 1 square higher up.
     ld [pbx] HL         -- set bullet coords.
     ret
 
   bchk <- labelled $ do
-    ld A [pbx]          -- bullet vertical.
+    ld A [pby]          -- bullet vertical.
     inc A               -- is it at 255 [default]?
     ret Z               -- yes  no bullet on screen.
     ld BC [pbx]         -- get coords.
@@ -240,31 +236,27 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     ret
 
   hmush <- labelled $ do
-    printVal AT
-    printVal [pbx]          -- bullet vertical.
-    printVal [pby]          -- bullet horizontal.
+    setCursorPos ([pbx], [pby])
     call wspace          -- set INK colour to white.
     call sfxHitM         -- play "hit mushroom" sound.
 
   kilbul <- labelled $ do
-    ldVia A [pbx] 0xff   -- x coord of 255 = switch bullet off.
+    ldVia A [pby] 0xff   -- x coord of 255 = switch bullet off.
     ret
 
   -- Move the bullet up the screen 1 character position at a time.
   moveb <- labelled $ do
-    ld A [pbx]          -- bullet vertical.
+    ld A [pby]          -- bullet vertical.
     inc A               -- is it at 255 [default]?
     ret Z               -- yes  no bullet on screen.
     sub 2               -- 1 row up.
-    ld [pbx] A
+    ld [pby] A
     ret
 
   -- Set up the x and y coordinates for the player's gunbase position,
   -- this routine is called prior to display and deletion of gunbase.
   basexy <- labelled $ do
-    printVal AT
-    printVal [plx]          -- player vertical coord.
-    printVal [ply]          -- player's horizontal position.
+    setCursorPos ([plx], [ply])
     ret
 
   -- Show player at current printVal position.
@@ -274,7 +266,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     ret
 
   pbull <- labelled $ do
-    ld A [pbx]          -- bullet vertical.
+    ld A [pby]          -- bullet vertical.
     inc A               -- is it at 255 [default]?
     ret Z               -- yes  no bullet on screen.
     call bullxy
@@ -284,7 +276,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     ret
 
   defbull <- labelled $ do
-    ld A [pbx]          -- bullet vertical.
+    ld A [pby]          -- bullet vertical.
     inc A               -- is it at 255 [default]?
     ret Z               -- yes  no bullet on screen.
     call bullxy         -- set up bullet coordinates.
@@ -296,15 +288,11 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   -- Set up the x and y coordinates for the player's bullet position
   -- this routine is called prior to display and deletion of bullets.
   bullxy <- labelled $ do
-    printVal AT
-    printVal [pbx]          -- player bullet vertical coord.
-    printVal [pby]          -- bullet's horizontal position.
+    setCursorPos ([pbx], [pby])
     ret
 
   segxy <- labelled $ do
-    printVal AT
-    printVal [IX+1]        -- segment x coordinate.
-    printVal [IX+2]        -- segment y coordinate.
+    setCursorPos ([IX+1], [IX+2])
     ret
   proseg <- labelled $ do
     call segcol             -- segment collision detection
@@ -332,55 +320,55 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     jr Z segml          -- going left - jump to that bit of code.
   -- so segment is going right then!
   segmr <- labelled $ do
-    ld A [IX+2]         -- y coord.
+    ld A [IX+1]         -- x coord.
     cp 31               -- already at right edge of screen?
     jr Z segmd          -- yes - move segment down.
     inc A               -- look right.
-    ld B A              -- set up GP y coord.
+    ld C A              -- set up GP y coord.
     call atadd          -- find attribute address.
     cp 0x44             -- mushrooms are bright [64] + green [4].
     jr Z segmd          -- mushroom to right  move down instead.
-    inc [IX+2]          -- no obstacles  so move right.
+    inc [IX+1]          -- no obstacles  so move right.
     ret
   -- so segment is going left then!
   segml <- labelled $ do
-    ld A [IX+2]         -- y coord.
+    ld A [IX+1]         -- x coord.
     and A               -- already at left edge of screen?
     jr Z segmd          -- yes - move segment down.
     dec A               -- look right.
-    ld B A              -- set up GP y coord.
+    ld C A              -- set up GP y coord.
     call atadd          -- find attribute address at [dispx dispy].
     cp 0x44             -- mushrooms are bright [64] + green [4].
     jr Z segmd          -- mushroom to left  move down instead.
-    dec [IX+2]          -- no obstacles  so move left.
+    dec [IX+1]          -- no obstacles  so move left.
     ret
   -- so segment is going down then!
   segmd <- labelled $ do
     ld A [IX]           -- segment direction.
     xor 1               -- reverse it.
     ld [IX] A           -- store new direction.
-    ld A [IX+1]         -- y coord.
+    ld A [IX+2]         -- y coord.
     cp 20               -- already at bottom of screen?
     jr Z segmt          -- yes - move segment to the top.
   -- At this point we're moving down regardless of any mushrooms that
   -- may block the segment's path.  Anything in the segment's way will
   -- be obliterated.
-    inc [IX+1]          -- haven't reached the bottom  move down.
+    inc [IX+2]          -- haven't reached the bottom  move down.
     ret
   -- moving segment to the top of the screen.
   segmt <- labelled $ do
     xor A               -- same as ld a 0 but saves 1 byte.
-    ld [IX+1] A         -- new x coordinate = top of screen.
+    ld [IX+2] A         -- new y coordinate = top of screen.
     ret
 
   -- Segment collision detection.
   -- Checks for collisions with player and player's bullets.
   segcol <- labelled $ do
-    ld A [ply]          -- bullet y position.
-    cp [IX+2]           -- is it identical to segment y coord?
+    ld A [plx]          -- bullet y position.
+    cp [IX+1]           -- is it identical to segment x coord?
     jr NZ bulcol        -- y coords differ  try bullet instead.
-    ld A [plx]          -- player x coord.
-    cp [IX+1]           -- same as segment?
+    ld A [ply]          -- player y coord.
+    cp [IX+2]           -- same as segment?
     jr NZ bulcol        -- x coords differ  try bullet instead.
 
   -- So we have a collision with the player.
@@ -390,25 +378,25 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
 
   -- Let's check for a collision with the player's bullet.
   bulcol <- labelled $ do
-    ld A [pbx]          -- bullet x coords.
+    ld A [pby]          -- bullet y coords.
     inc A               -- at default value?
     ret Z               -- yes  no bullet to check for.
-    cp [IX+1]           -- is bullet x coord same as segment x coord?
+    cp [IX+2]           -- is bullet y coord same as segment y coord?
     ret NZ              -- no  so no collision.
-    ld A [pby]          -- bullet y position.
-    cp [IX+2]           -- is it identical to segment y coord?
+    ld A [pbx]          -- bullet y position.
+    cp [IX+1]           -- is it identical to segment x coord?
     ret NZ              -- no - no collision this time.
 
     -- So we have a collision with the player's bullet.
     call defbull          -- delete bullet.
     printVal AT
-    ld A [pbx]          -- player bullet vertical coord.
+    ld A [pby]          -- player bullet vertical coord.
     inc A               -- 1 line down.
     printA              -- set vertical position of mushroom.
-    printVal [pby]         -- bullet's horizontal position.
-    printVal INK           -- ASCII code for INK control.
-    printVal GREEN         -- 4 = colour green.
-    printVal 0x91          -- UDG 'B' is the mushroom graphic.
+    printVal [pbx]      -- bullet's horizontal position.
+    printVal INK        -- ASCII code for INK control.
+    printVal GREEN      -- 4 = colour green.
+    printVal 0x91       -- UDG 'B' is the mushroom graphic.
     call kilbul         -- kill the bullet.
     ld [IX] A           -- kill the segment.
     ld HL segsLeft      -- number of segments.
@@ -436,8 +424,8 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   -- Calculate address of attribute for character at (dispx, dispy).
   -- (source: https://chuntey.wordpress.com/2013/02/28/how-to-write-zx-spectrum-games-chapter-5/)
   atadd <- labelled $ do
-    ld A C              -- vertical coordinate.
-    rrca                -- multiply by 32.
+    ld A B              -- vertical coordinate.
+    rrca                -- multiplx by 32.
     rrca                -- Shifting right with carry 3 times is
     rrca                -- quicker than shifting left 5 times.
     ld E A
@@ -447,7 +435,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     ld A E
     and 0xe0            -- mask low byte.
     ld E A
-    ld A B              -- horizontal position.
+    ld A C              -- horizontal position.
     add A E
     ld E A              -- de=address of attributes.
     ld A [DE]           -- return with attribute in accumulator.
