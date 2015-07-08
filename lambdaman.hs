@@ -18,7 +18,7 @@ coords (x, y) = fromIntegral x .|. fromIntegral y `shiftL` 8
 
 main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   -- Load UDGs
-  ldVia HL [UDG_LOC] udgs
+  ldVia HL [UDG_LOC] =<< udgs
 
   -- Play intro sound
   call sfxStart
@@ -509,40 +509,6 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   pby  <- labelled $ defb [0xff]
   dead <- labelled $ defb [0]    -- flag - player dead when non-zero.
 
-  udgs <- labelled $ do
-    udg [ "        "
-        , " ##     "
-        , "   #    "
-        , "   #    "
-        , "   ##   "
-        , "  # #   "
-        , " #   #  "
-        , " #    # "]
-    udg [ "        "
-        , "        "
-        , "   ##   "
-        , "  ####  "
-        , " ###### "
-        , "   ##   "
-        , "        "
-        , "        "]
-    udg [ "        "
-        , "   ##   "
-        , "  ####  "
-        , " ###### "
-        , " ###### "
-        , "  ####  "
-        , "   ##   "
-        , "        "]
-    udg [ "   ##   "
-        , "   ##   "
-        , "   ##   "
-        , "   ##   "
-        , "   ##   "
-        , "   ##   "
-        , "  ####  "
-        , " # ## # "]
-
   -- Table of segments.
   -- Format: 3 bytes per entry, 10 segments.
   -- byte 1: 255=segment off, 0=left, 1=right.
@@ -559,3 +525,38 @@ lambdamanScore = static "lambdamanScore" $ defb [0, 0]
 
 centipedeScore :: Z80 Location
 centipedeScore = static "centipedeScore" $ defb [0, 0]
+
+udgs :: Z80 Location
+udgs = static "udgs" $ do
+  udg [ "        "
+      , " ##     "
+      , "   #    "
+      , "   #    "
+      , "   ##   "
+      , "  # #   "
+      , " #   #  "
+      , " #    # "]
+  udg [ "        "
+      , "        "
+      , "   ##   "
+      , "  ####  "
+      , " ###### "
+      , "   ##   "
+      , "        "
+      , "        "]
+  udg [ "        "
+      , "   ##   "
+      , "  ####  "
+      , " ###### "
+      , " ###### "
+      , "  ####  "
+      , "   ##   "
+      , "        "]
+  udg [ "   ##   "
+      , "   ##   "
+      , "   ##   "
+      , "   ##   "
+      , "   ##   "
+      , "   ##   "
+      , "  ####  "
+      , " # ## # "]
