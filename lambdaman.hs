@@ -32,19 +32,17 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   -- Set up score text
   ld A 2
   call CHAN_OPEN
+
   setCursorPos (0, 21)
-  ld DE lmName
-  ld BC . fromIntegral $ BS.length lambdaman
-  call PR_STRING
+  printString "lambdaman "
   lambdamanScore >>= \score -> ld BC [score]
   call OUT_NUM_1
-  setCursorPos (fromIntegral $ 31 - 3 - BS.length centipede, 21)
-  ld HL centipedeScore
+
+  let centipedeString = " centipede"
+  setCursorPos (fromIntegral $ 31 - 3 - length centipedeString, 21)
   ld HL =<< centipedeScore
   call OUT_NUM_2
-  ld DE cpName
-  ld BC . fromIntegral $ BS.length centipede
-  call PR_STRING
+  printString centipedeString
 
   -- Initialise
   xor A               -- zeroise accumulator.
@@ -483,11 +481,6 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     ret
 
   -- Data
-  let lambdaman = "lambdaman "
-      centipede = " centipede"
-  lmName <- labelled $ defb lambdaman
-  cpName <- labelled $ defb centipede
-
   plx  <- labelled $ defb [0]    -- player's x coordinate.
   ply  <- labelled $ defb [0]    -- player's y coordinate.
   pbx  <- labelled $ defb [0xff] -- player's bullet coordinates.
