@@ -64,14 +64,14 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   -- Now we want to fill the play area with mushrooms.
   setAttrs AttrTemp NoFlash Bright (Paper Black) (Ink Green)
   decLoopB 50 $ do
-    printVal AT          -- control code for AT character.
-    call random       -- get a 'random' number.
-    and 0x0f          -- want vertical in range 0 to 15.
+    printVal AT         -- control code for AT character.
+    call =<< random     -- get a 'random' number.
+    and 0x0f            -- want vertical in range 0 to 15.
     printA
-    call random       -- want another pseudo-random number.
-    and 0x1f          -- want horizontal in range 0 to 31.
+    call =<< random     -- want another pseudo-random number.
+    and 0x1f            -- want horizontal in range 0 to 31.
     printA
-    printVal 0x91        -- UDG 'B' is the mushroom graphic.
+    printVal 0x91       -- UDG 'B' is the mushroom graphic.
 
   loopForever $ do
     -- Delete the player
@@ -407,21 +407,6 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     pop IX
     ret
 
-  -- Simple pseudo-random number generator.
-  -- Steps a pointer through the ROM (held in seed), returning
-  -- the contents of the byte at that location.
-  -- (source: https://chuntey.wordpress.com/2013/02/28/how-to-write-zx-spectrum-games-chapter-4/)
-  random <- labelled $ do
-    ld HL [seed]        -- Pointer
-    ld A H
-    and 31              -- keep it within first 8k of ROM.
-    ld H A
-    ld A [HL]           -- Get "random" number from location.
-    inc HL              -- Increment pointer.
-    ld [seed] HL
-    ret
-  seed <- labelled $ defb [0,0] -- TODO dw command
-
   -- Calculate address of attribute for character at (dispx, dispy).
   -- (source: https://chuntey.wordpress.com/2013/02/28/how-to-write-zx-spectrum-games-chapter-5/)
   atadd <- labelled $ do
@@ -525,6 +510,23 @@ lambdamanScore = static "lambdamanScore" $ defb [0, 0]
 
 centipedeScore :: Z80 Location
 centipedeScore = static "centipedeScore" $ defb [0, 0]
+
+-- | Simple pseudo-random number generator.
+-- Steps a pointer through the ROM (held in seed), returning
+-- the contents of the byte at that location.
+-- (source: https://chuntey.wordpress.com/2013/02/28/how-to-write-zx-spectrum-games-chapter-4/)
+random :: Z80 Location
+random = static "random" $ mdo
+  ld HL [seed]        -- Pointer
+  ld A H
+  and 31              -- keep it within first 8k of ROM.
+  ld H A
+  ld A [HL]           -- Get "random" number from location.
+  inc HL              -- Increment pointer.
+  ld [seed] HL
+  ret
+  seed <- labelled $ defb [0,0] -- TODO dw command
+  end
 
 udgs :: Z80 Location
 udgs = static "udgs" $ do
