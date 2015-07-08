@@ -36,10 +36,11 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   ld DE lmName
   ld BC . fromIntegral $ BS.length lambdaman
   call PR_STRING
-  ld BC [lambdamanScore]
+  lambdamanScore >>= \score -> ld BC [score]
   call OUT_NUM_1
   setCursorPos (fromIntegral $ 31 - 3 - BS.length centipede, 21)
   ld HL centipedeScore
+  ld HL =<< centipedeScore
   call OUT_NUM_2
   ld DE cpName
   ld BC . fromIntegral $ BS.length centipede
@@ -443,12 +444,12 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
 
   gameOver <- labelled $ do
     call sfxLost
-    ld HL $ centipedeScore + 1
+    ld HL . (+1) =<< centipedeScore
     inc [HL]
     jp gameStart
   gameWon <- labelled $ do
     call sfxWon
-    ld HL lambdamanScore
+    ld HL =<< lambdamanScore
     inc [HL]
     jp gameStart
 
@@ -508,9 +509,6 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   pby  <- labelled $ defb [0xff]
   dead <- labelled $ defb [0]    -- flag - player dead when non-zero.
 
-  lambdamanScore <- labelled $ defb [0, 0]
-  centipedeScore <- labelled $ defb [0, 0]
-
   udgs <- labelled $ do
     udg [ "        "
         , " ##     "
@@ -555,3 +553,9 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   segsLeft <- labelled $ defb [numseg]
 
   end
+
+lambdamanScore :: Z80 Location
+lambdamanScore = static "lambdamanScore" $ defb [0, 0]
+
+centipedeScore :: Z80 Location
+centipedeScore = static "centipedeScore" $ defb [0, 0]
