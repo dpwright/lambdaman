@@ -174,14 +174,14 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
       add IX DE         -- get next segment in ix registers.
     ret
 
-  checkMushroom <- return $ \direction -> do
-    let move DLeft  = dec B; move DRight = inc B
-        move DUp    = dec C; move DDown  = inc C
-    ld BC [plx]         -- current coords.
-    move direction      -- move to the position we want to check.
-    call atadd          -- get address of attribute at this position.
-    cp 0x44             -- mushrooms are bright (0x40) + green (0x04).
-    ret Z               -- there's a mushroom - we can't move there.
+  let checkMushroom direction = do
+        let move DLeft  = dec B; move DRight = inc B
+            move DUp    = dec C; move DDown  = inc C
+        ld BC [plx]     -- current coords.
+        move direction  -- move to the position we want to check.
+        call atadd      -- get address of attribute at this position.
+        cp 0x44         -- mushrooms are bright (0x40) + green (0x04).
+        ret Z           -- there's a mushroom - we can't move there.
 
   -- Move player left.
   mpl <- labelled $ do
@@ -513,8 +513,8 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     ret
 
   -- Data
-  lambdaman <- return "lambdaman "
-  centipede <- return " centipede"
+  let lambdaman = "lambdaman "
+      centipede = " centipede"
   lmName <- labelled $ defb lambdaman
   cpName <- labelled $ defb centipede
 
@@ -566,7 +566,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   -- byte 1: 255=segment off, 0=left, 1=right.
   -- byte 2 = x (vertical) coordinate.
   -- byte 3 = y (horizontal) coordinate.
-  numseg <- return 10
+  let numseg = 10
   segmnt <- labelled . replicateM_ (fromIntegral numseg) . defb $ pack [0,0,0]
   segsLeft <- labelled . defb $ pack [numseg]
 
