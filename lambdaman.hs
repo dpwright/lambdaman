@@ -113,22 +113,22 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
 
     rra                 -- Enter to fire
     push AF             -- remember the value.
-    call NC fire        -- it's being pressed, fire
+    call NC =<< fire    -- it's being pressed, fire
     pop AF              -- restore accumulator.
     rra                 -- outermost bit = key 1.
     push AF             -- remember the value.
-    call NC mpr         -- it's being pressed, move left.
+    call NC =<< mpr     -- it's being pressed, move left.
     pop AF              -- restore accumulator.
     rra                 -- next bit along (value 2) = key 2.
     push AF             -- remember the value.
-    call NC mpu         -- being pressed, so move right.
+    call NC =<< mpu     -- being pressed, so move right.
     pop AF              -- restore accumulator.
     rra                 -- next bit (value 4) = key 3.
     push AF             -- remember the value.
-    call NC mpd         -- being pressed, so move down.
+    call NC =<< mpd     -- being pressed, so move down.
     pop AF              -- restore accumulator.
     rra                 -- next bit (value 8) reads key 4.
-    call NC mpl         -- it's being pressed, move up.
+    call NC =<< mpl     -- it's being pressed, move up.
     ret
 
   input <- labelled $ do
@@ -136,23 +136,23 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     ld BC KEYS_TREWQ
     in_ A [C]           -- see what keys are pressed.
     rra
-    call NC mpu
+    call NC =<< mpu
     ld BC KEYS_GFDSA
     in_ A [C]
     rra
-    call NC mpd
+    call NC =<< mpd
     ld BC KEYS_YUIOP
     in_ A [C]
     rra
     push AF
-    call NC mpr
+    call NC =<< mpr
     pop AF
     rra
-    call NC mpl
+    call NC =<< mpl
     ld BC KEYS_BNMsssp
     in_ A [C]
     rra
-    call NC fire
+    call NC =<< fire
     ret
 
   processSegments <- labelled $ do
@@ -167,71 +167,12 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
       add IX DE         -- get next segment in ix registers.
     ret
 
-  let checkMushroom direction = do
-        let move DLeft  = dec C; move DRight = inc C
-            move DUp    = dec B; move DDown  = inc B
-        ld BC [plx]     -- current coords.
-        move direction  -- move to the position we want to check.
-        call atadd      -- get address of attribute at this position.
-        cp 0x44         -- mushrooms are bright (0x40) + green (0x04).
-        ret Z           -- there's a mushroom - we can't move there.
-
-  -- Move player left.
-  mpl <- labelled $ do
-    ld HL plx           -- remember, y is the horizontal coord!
-    ld A [HL]           -- what's the current value?
-    and A               -- is it zero?
-    ret Z               -- yes - we can't go any further left.
-    checkMushroom DLeft -- Check for mushrooms one space to the left
-    dec [HL]            -- subtract 1 from y coordinate.
-    ret
-
-  -- Move player right.
-  mpr <- labelled $ do
-    ld HL plx           -- remember, y is the horizontal coord!
-    ld A [HL]           -- what's the current value?
-    cp 31               -- is it at the right edge (31)?
-    ret Z               -- yes - we can't go any further right.
-    checkMushroom DRight-- Check for mushrooms one space to the right
-    inc [HL]            -- add 1 to y coordinate.
-    ret
-
-  -- Move player up.
-  mpu <- labelled $ do
-    ld HL ply           -- remember, x is the vertical coord!
-    ld A [HL]           -- what's the current value?
-    cp 0                -- is it at upper limit (0)?
-    ret Z               -- yes - we can go no further then.
-    checkMushroom DUp   -- Check for mushrooms one space up.
-    dec [HL]            -- subtract 1 from x coordinate.
-    ret
-
-  -- Move player down.
-  mpd <- labelled $ do
-    ld HL ply           -- remember, x is the vertical coord!
-    ld A [HL]           -- what's the current value?
-    cp 20               -- is it already at the bottom (20)?
-    ret Z               -- yes - we can't go down any more.
-    checkMushroom DDown -- Check for mushrooms one space down.
-    inc [HL]            -- add 1 to x coordinate.
-    ret
-
-  -- Fire a missile.
-  fire <- labelled $ do
-    ld A [pby]          -- bullet vertical coord.
-    inc A               -- 255 is default value  increments to zero.
-    ret NZ              -- bullet on screen  can't fire again.
-    ld HL [plx]         -- player coordinates.
-    dec H               -- 1 square higher up.
-    ld [pbx] HL         -- set bullet coords.
-    ret
-
   bchk <- labelled $ do
     ld A [pby]          -- bullet vertical.
     inc A               -- is it at 255 [default]?
     ret Z               -- yes  no bullet on screen.
     ld BC [pbx]         -- get coords.
-    call atadd          -- find attribute here.
+    call =<< atadd      -- find attribute here.
     cp 0x44             -- mushrooms are bright [64] + green [4].
     jr Z hmush          -- hit a mushroom!
     ret
@@ -326,7 +267,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     jr Z segmd          -- yes - move segment down.
     inc A               -- look right.
     ld C A              -- set up GP y coord.
-    call atadd          -- find attribute address.
+    call =<< atadd      -- find attribute address.
     cp 0x44             -- mushrooms are bright [64] + green [4].
     jr Z segmd          -- mushroom to right  move down instead.
     inc [IX+1]          -- no obstacles  so move right.
@@ -338,7 +279,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     jr Z segmd          -- yes - move segment down.
     dec A               -- look right.
     ld C A              -- set up GP y coord.
-    call atadd          -- find attribute address at [dispx dispy].
+    call =<< atadd      -- find attribute address at [dispx dispy].
     cp 0x44             -- mushrooms are bright [64] + green [4].
     jr Z segmd          -- mushroom to left  move down instead.
     dec [IX+1]          -- no obstacles  so move left.
@@ -407,26 +348,6 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     pop IX
     ret
 
-  -- Calculate address of attribute for character at (dispx, dispy).
-  -- (source: https://chuntey.wordpress.com/2013/02/28/how-to-write-zx-spectrum-games-chapter-5/)
-  atadd <- labelled $ do
-    ld A B              -- vertical coordinate.
-    rrca                -- multiplx by 32.
-    rrca                -- Shifting right with carry 3 times is
-    rrca                -- quicker than shifting left 5 times.
-    ld E A
-    and 3
-    add A 88            -- 88x256=address of attributes.
-    ld D A
-    ld A E
-    and 0xe0            -- mask low byte.
-    ld E A
-    ld A C              -- horizontal position.
-    add A E
-    ld E A              -- de=address of attributes.
-    ld A [DE]           -- return with attribute in accumulator.
-    ret
-
   gameOver <- labelled $ do
     call =<< sfxLost
     ld HL . (+1) =<< centipedeScore
@@ -442,6 +363,98 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   (plx, ply, pbx, pby, dead) <- playerData
 
   end
+
+checkMushroom :: Direction -> Z80 Location
+checkMushroom direction = do
+  (plx, _, _, _, _) <- playerData
+  ld BC [plx]     -- current coords.
+  move direction  -- move to the position we want to check.
+  call =<< atadd  -- get address of attribute at this position.
+  cp 0x44         -- mushrooms are bright (0x40) + green (0x04).
+  ret Z           -- there's a mushroom - we can't move there.
+  where move DLeft  = dec C; move DRight = inc C
+        move DUp    = dec B; move DDown  = inc B
+
+-- Move player left.
+mpl :: Z80 Location
+mpl = static "mpl" $ do
+  (plx, _, _, _, _)   <- playerData
+  ld HL plx           -- remember, y is the horizontal coord!
+  ld A [HL]           -- what's the current value?
+  and A               -- is it zero?
+  ret Z               -- yes - we can't go any further left.
+  checkMushroom DLeft -- Check for mushrooms one space to the left
+  dec [HL]            -- subtract 1 from y coordinate.
+  ret
+
+-- Move player right.
+mpr :: Z80 Location
+mpr = static "mpr" $ do
+  (plx, _, _, _, _)   <- playerData
+  ld HL plx           -- remember, y is the horizontal coord!
+  ld A [HL]           -- what's the current value?
+  cp 31               -- is it at the right edge (31)?
+  ret Z               -- yes - we can't go any further right.
+  checkMushroom DRight-- Check for mushrooms one space to the right
+  inc [HL]            -- add 1 to y coordinate.
+  ret
+
+-- Move player up.
+mpu :: Z80 Location
+mpu = static "mpu" $ do
+  (_, ply, _, _, _)   <- playerData
+  ld HL ply           -- remember, x is the vertical coord!
+  ld A [HL]           -- what's the current value?
+  cp 0                -- is it at upper limit (0)?
+  ret Z               -- yes - we can go no further then.
+  checkMushroom DUp   -- Check for mushrooms one space up.
+  dec [HL]            -- subtract 1 from x coordinate.
+  ret
+
+-- Move player down.
+mpd :: Z80 Location
+mpd = static "mpd" $ do
+  (_, ply, _, _, _)   <- playerData
+  ld HL ply           -- remember, x is the vertical coord!
+  ld A [HL]           -- what's the current value?
+  cp 20               -- is it already at the bottom (20)?
+  ret Z               -- yes - we can't go down any more.
+  checkMushroom DDown -- Check for mushrooms one space down.
+  inc [HL]            -- add 1 to x coordinate.
+  ret
+
+-- Fire a missile.
+fire :: Z80 Location
+fire = static "fire" $ do
+  (plx, _, pbx, pby, fire) <- playerData
+  ld A [pby]          -- bullet vertical coord.
+  inc A               -- 255 is default value  increments to zero.
+  ret NZ              -- bullet on screen  can't fire again.
+  ld HL [plx]         -- player coordinates.
+  dec H               -- 1 square higher up.
+  ld [pbx] HL         -- set bullet coords.
+  ret
+
+-- | Calculate address of attribute for character at (dispx, dispy).
+-- (source: https://chuntey.wordpress.com/2013/02/28/how-to-write-zx-spectrum-games-chapter-5/)
+atadd :: Z80 Location
+atadd = static "atadd" $ do
+  ld A B              -- vertical coordinate.
+  rrca                -- multiplx by 32.
+  rrca                -- Shifting right with carry 3 times is
+  rrca                -- quicker than shifting left 5 times.
+  ld E A
+  and 3
+  add A 88            -- 88x256=address of attributes.
+  ld D A
+  ld A E
+  and 0xe0            -- mask low byte.
+  ld E A
+  ld A C              -- horizontal position.
+  add A E
+  ld E A              -- de=address of attributes.
+  ld A [DE]           -- return with attribute in accumulator.
+  ret
 
 lambdamanScore :: Z80 Location
 lambdamanScore = static "lambdamanScore" $ defb [0, 0]
