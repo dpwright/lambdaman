@@ -13,6 +13,8 @@ import ZXSpectrum
 
 data Direction = DUp | DDown | DLeft | DRight
 
+numseg = 10
+
 coords :: (Word8, Word8) -> Word16
 coords (x, y) = fromIntegral x .|. fromIntegral y `shiftL` 8
 
@@ -47,10 +49,10 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   -- Initialise
   xor A               -- zeroise accumulator.
   ld [dead] A         -- set flag to say player is alive.
-  ldVia A [segsLeft] numseg  -- Set segsLeft to equal numseg
+  segsLeft >>= \sl -> ldVia A [sl] numseg  -- Set segsLeft to equal numseg
   ldVia HL [plx] $ coords (15, 20) -- Set ply/plx to starting coords.
 
-  ld HL segmnt        -- segment table.
+  ld HL =<< segmnt    -- segment table.
   decLoopB 10 $ do
     ld [HL] 1         -- start off moving right.
     inc HL
@@ -101,7 +103,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     and A
     jp NZ gameOver      -- player killed - lose a life.
 
-    ld A [segsLeft]     -- was the centipede killed by the player?
+    segsLeft >>= \sl -> ld A [sl] -- was the centipede killed by the player?
     cp 0
     jp Z gameWon        -- centipede killed -- we won this time.
 
@@ -154,7 +156,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     ret
 
   processSegments <- labelled $ do
-    ld IX segmnt        -- table of segment data.
+    ld IX =<< segmnt    -- table of segment data.
     decLoopB 10 $ do
       push BC
       ld A [IX]         -- is segment switched on?
@@ -398,7 +400,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     printVal 0x91       -- UDG 'B' is the mushroom graphic.
     call kilbul         -- kill the bullet.
     ld [IX] A           -- kill the segment.
-    ld HL segsLeft      -- number of segments.
+    ld HL =<< segsLeft  -- number of segments.
     dec [HL]            -- decrement it.
     push IX
     call NZ =<< sfxHitC -- Play segment hit sound if this wasn't the last segment.
@@ -443,15 +445,6 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   pby  <- labelled $ defb [0xff]
   dead <- labelled $ defb [0]    -- flag - player dead when non-zero.
 
-  -- Table of segments.
-  -- Format: 3 bytes per entry, 10 segments.
-  -- byte 1: 255=segment off, 0=left, 1=right.
-  -- byte 2 = x (vertical) coordinate.
-  -- byte 3 = y (horizontal) coordinate.
-  let numseg = 10
-  segmnt <- labelled . replicateM_ (fromIntegral numseg) $ defb [0,0,0]
-  segsLeft <- labelled $ defb [numseg]
-
   end
 
 lambdamanScore :: Z80 Location
@@ -459,6 +452,15 @@ lambdamanScore = static "lambdamanScore" $ defb [0, 0]
 
 centipedeScore :: Z80 Location
 centipedeScore = static "centipedeScore" $ defb [0, 0]
+
+-- Table of segments.
+-- Format: 3 bytes per entry, 10 segments.
+-- byte 1: 255=segment off, 0=left, 1=right.
+-- byte 2 = x (vertical) coordinate.
+-- byte 3 = y (horizontal) coordinate.
+segmnt, segsLeft :: Z80 Location
+segmnt   = static "segmnt"   $ replicateM_ (fromIntegral numseg) (defb [0,0,0])
+segsLeft = static "segsLeft" $ defb [numseg]
 
 -- | Simple pseudo-random number generator.
 -- Steps a pointer through the ROM (held in seed), returning
