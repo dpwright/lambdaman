@@ -439,11 +439,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     jp gameStart
 
   -- Data
-  plx  <- labelled $ defb [0]    -- player's x coordinate.
-  ply  <- labelled $ defb [0]    -- player's y coordinate.
-  pbx  <- labelled $ defb [0xff] -- player's bullet coordinates.
-  pby  <- labelled $ defb [0xff]
-  dead <- labelled $ defb [0]    -- flag - player dead when non-zero.
+  (plx, ply, pbx, pby, dead) <- playerData
 
   end
 
@@ -452,6 +448,15 @@ lambdamanScore = static "lambdamanScore" $ defb [0, 0]
 
 centipedeScore :: Z80 Location
 centipedeScore = static "centipedeScore" $ defb [0, 0]
+
+playerData :: Z80 (Location, Location, Location, Location, Location)
+playerData = do
+  plx  <- static "plx"  $ defb [0]    -- player's x coordinate.
+  ply  <- static "ply"  $ defb [0]    -- player's y coordinate.
+  pbx  <- static "pbx"  $ defb [0xff] -- player's bullet coordinates.
+  pby  <- static "pby"  $ defb [0xff]
+  dead <- static "dead" $ defb [0]    -- flag - player dead when non-zero.
+  return (plx, ply, pbx, pby, dead)
 
 -- Table of segments.
 -- Format: 3 bytes per entry, 10 segments.
