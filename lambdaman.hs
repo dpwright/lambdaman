@@ -18,20 +18,12 @@ numseg = 10
 coords :: (Word8, Word8) -> Word16
 coords (x, y) = fromIntegral x .|. fromIntegral y `shiftL` 8
 
-main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
-  -- Load UDGs
-  ldVia HL [UDG_LOC] =<< udgs
-
-  -- Play intro sound
-  call =<< sfxStart
-  gameStart <- label
-
-  -- Set up colours
+clearScreen = do
   setBorderColour Black
   setAttrs AttrDefault NoFlash Bright (Paper Black) (Ink White)
   call CL_ALL
 
-  -- Set up score text
+printScores = do
   ld A 2
   call CHAN_OPEN
 
@@ -46,7 +38,8 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   call OUT_NUM_2
   printString centipedeString
 
-  -- Initialise
+initPlayArea = do
+  (plx, _, _, _, dead) <- playerData
   xor A               -- zeroise accumulator.
   ld [dead] A         -- set flag to say player is alive.
   segsLeft >>= \sl -> ldVia A [sl] numseg  -- Set segsLeft to equal numseg
@@ -73,6 +66,18 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     printA
     printVal 0x91       -- UDG 'B' is the mushroom graphic.
 
+main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
+  -- Load UDGs
+  ldVia HL [UDG_LOC] =<< udgs
+
+  -- Play intro sound
+  call =<< sfxStart
+  gameStart <- label
+
+  clearScreen
+  printScores
+  initPlayArea
+
   loopForever $ do
     -- Delete the player
     call basexy
@@ -80,8 +85,8 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
 
     -- Now we've deleted the player we can move him before redisplaying him
     -- at his new coordinates.
-    call input          -- Standard speccy controls
-    call vimput         -- Vim controls
+    call =<< input      -- Standard speccy controls
+    call =<< vimput     -- Vim controls
 
     -- Now he's moved we can redisplay the player.
     call basexy         -- set the x and y positions of the player.
@@ -106,54 +111,6 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     segsLeft >>= \sl -> ld A [sl] -- was the centipede killed by the player?
     cp 0
     jp Z gameWon        -- centipede killed -- we won this time.
-
-  vimput <- labelled $ do
-    ld BC KEYS_HJKLret  -- vim keys
-    in_ A [C]           -- see what keys are pressed.
-
-    rra                 -- Enter to fire
-    push AF             -- remember the value.
-    call NC =<< fire    -- it's being pressed, fire
-    pop AF              -- restore accumulator.
-    rra                 -- outermost bit = key 1.
-    push AF             -- remember the value.
-    call NC =<< mpr     -- it's being pressed, move left.
-    pop AF              -- restore accumulator.
-    rra                 -- next bit along (value 2) = key 2.
-    push AF             -- remember the value.
-    call NC =<< mpu     -- being pressed, so move right.
-    pop AF              -- restore accumulator.
-    rra                 -- next bit (value 4) = key 3.
-    push AF             -- remember the value.
-    call NC =<< mpd     -- being pressed, so move down.
-    pop AF              -- restore accumulator.
-    rra                 -- next bit (value 8) reads key 4.
-    call NC =<< mpl     -- it's being pressed, move up.
-    ret
-
-  input <- labelled $ do
-    -- QA, OP, Space.  Aggravatingly all on different parts of the keyboard...
-    ld BC KEYS_TREWQ
-    in_ A [C]           -- see what keys are pressed.
-    rra
-    call NC =<< mpu
-    ld BC KEYS_GFDSA
-    in_ A [C]
-    rra
-    call NC =<< mpd
-    ld BC KEYS_YUIOP
-    in_ A [C]
-    rra
-    push AF
-    call NC =<< mpr
-    pop AF
-    rra
-    call NC =<< mpl
-    ld BC KEYS_BNMsssp
-    in_ A [C]
-    rra
-    call NC =<< fire
-    ret
 
   processSegments <- labelled $ do
     ld IX =<< segmnt    -- table of segment data.
@@ -363,6 +320,56 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   (plx, ply, pbx, pby, dead) <- playerData
 
   end
+
+vimput :: Z80 Location
+vimput = static "vimput" $ do
+  ld BC KEYS_HJKLret  -- vim keys
+  in_ A [C]           -- see what keys are pressed.
+
+  rra                 -- Enter to fire
+  push AF             -- remember the value.
+  call NC =<< fire    -- it's being pressed, fire
+  pop AF              -- restore accumulator.
+  rra                 -- outermost bit = key 1.
+  push AF             -- remember the value.
+  call NC =<< mpr     -- it's being pressed, move left.
+  pop AF              -- restore accumulator.
+  rra                 -- next bit along (value 2) = key 2.
+  push AF             -- remember the value.
+  call NC =<< mpu     -- being pressed, so move right.
+  pop AF              -- restore accumulator.
+  rra                 -- next bit (value 4) = key 3.
+  push AF             -- remember the value.
+  call NC =<< mpd     -- being pressed, so move down.
+  pop AF              -- restore accumulator.
+  rra                 -- next bit (value 8) reads key 4.
+  call NC =<< mpl     -- it's being pressed, move up.
+  ret
+
+input :: Z80 Location
+input = static "input" $ do
+  -- QA, OP, Space.  Aggravatingly all on different parts of the keyboard...
+  ld BC KEYS_TREWQ
+  in_ A [C]           -- see what keys are pressed.
+  rra
+  call NC =<< mpu
+  ld BC KEYS_GFDSA
+  in_ A [C]
+  rra
+  call NC =<< mpd
+  ld BC KEYS_YUIOP
+  in_ A [C]
+  rra
+  push AF
+  call NC =<< mpr
+  pop AF
+  rra
+  call NC =<< mpl
+  ld BC KEYS_BNMsssp
+  in_ A [C]
+  rra
+  call NC =<< fire
+  ret
 
 checkMushroom :: Direction -> Z80 Location
 checkMushroom direction = do
