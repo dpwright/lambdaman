@@ -77,7 +77,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     printA
     printVal 0x91        -- UDG 'B' is the mushroom graphic.
 
-  withLabel $ \mloop -> do
+  loopForever $ do
     -- Delete the player
     call basexy
     call wspace
@@ -110,9 +110,6 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     ld A [segsLeft]     -- was the centipede killed by the player?
     cp 0
     jp Z gameWon        -- centipede killed -- we won this time.
-
-    -- Jump back to beginning of main loop.
-    jp mloop
 
   vimput <- labelled $ do
     ld BC KEYS_HJKLret  -- vim keys
