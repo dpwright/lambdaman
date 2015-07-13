@@ -21,7 +21,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   ldVia HL [UDG_LOC] =<< udgs
 
   -- Play intro sound
-  call sfxStart
+  call =<< sfxStart
   gameStart <- label
 
   -- Set up colours
@@ -237,7 +237,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   hmush <- labelled $ do
     setCursorPos ([pbx], [pby])
     call wspace          -- set INK colour to white.
-    call sfxHitM         -- play "hit mushroom" sound.
+    call =<< sfxHitM         -- play "hit mushroom" sound.
 
   kilbul <- labelled $ do
     ldVia A [pby] 0xff   -- x coord of 255 = switch bullet off.
@@ -401,7 +401,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     ld HL segsLeft      -- number of segments.
     dec [HL]            -- decrement it.
     push IX
-    call NZ sfxHitC     -- Play segment hit sound if this wasn't the last segment.
+    call NZ =<< sfxHitC -- Play segment hit sound if this wasn't the last segment.
     pop IX
     ret
 
@@ -426,59 +426,15 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     ret
 
   gameOver <- labelled $ do
-    call sfxLost
+    call =<< sfxLost
     ld HL . (+1) =<< centipedeScore
     inc [HL]
     jp gameStart
   gameWon <- labelled $ do
-    call sfxWon
+    call =<< sfxWon
     ld HL =<< lambdamanScore
     inc [HL]
     jp gameStart
-
-  -- Sounds
-  sfxStart <- labelled $ do -- Start game
-    playSeq [ (note F_  4, 0.111)
-            , (note AS_ 4, 0.222)
-            , (note C_  5, 0.111)
-            , (note D_  5, 0.222)
-            , (note C_  5, 0.111)
-            , (note AS_ 4, 0.222)
-            , (note F_  5, 1.000) ]
-    ret
-  sfxHitC  <- labelled $ do -- Hit centipede segment
-    playSeq [ (note E_  4, 0.033)
-            , (note G_  4, 0.033)
-            , (note C_  5, 0.066) ]
-    ret
-  sfxHitM  <- labelled $ do -- Hit mushroom
-    playSeq [ (note F_  3, 0.033)
-            , (note FS_ 3, 0.033) ]
-    ret
-  sfxLost  <- labelled $ do -- Lambdaman died
-    playSeq [ (note GS_ 4, 0.083)
-            , (note C_  5, 0.083)
-            , (note A_  4, 0.083)
-            , (note B_  4, 0.083)
-            , (note GS_ 4, 0.083)
-            , (note AS_ 4, 0.083)
-            , (note G_  4, 0.083)
-            , (note A_  4, 0.083)
-            , (note FS_ 4, 0.083)
-            , (note GS_ 4, 0.083)
-            , (note F_  4, 0.083)
-            , (note G_  4, 0.083)
-            , (note E_  4, 0.748) ]
-    ret
-  sfxWon   <- labelled $ do -- Centipede died
-    playSeq [ (note G_  5, 0.222)
-            , (note F_  5, 0.111)
-            , (note D_  5, 0.222)
-            , (note C_  5, 0.111)
-            , (note D_  5, 0.222)
-            , (note F_  5, 0.333)
-            , (note AS_ 4, 0.777) ]
-    ret
 
   -- Data
   plx  <- labelled $ defb [0]    -- player's x coordinate.
@@ -555,3 +511,60 @@ udgs = static "udgs" $ do
       , "   ##   "
       , "  ####  "
       , " # ## # "]
+
+-- Start game
+sfxStart :: Z80 Location
+sfxStart = static "sfxStart" $ do
+  playSeq [ (note F_  4, 0.111)
+          , (note AS_ 4, 0.222)
+          , (note C_  5, 0.111)
+          , (note D_  5, 0.222)
+          , (note C_  5, 0.111)
+          , (note AS_ 4, 0.222)
+          , (note F_  5, 1.000) ]
+  ret
+
+-- Hit centipede segment
+sfxHitC :: Z80 Location
+sfxHitC = static "sfxHitC" $ do
+  playSeq [ (note E_  4, 0.033)
+          , (note G_  4, 0.033)
+          , (note C_  5, 0.066) ]
+  ret
+
+-- Hit mushroom
+sfxHitM :: Z80 Location
+sfxHitM = static "sfxHitM" $ do
+  playSeq [ (note F_  3, 0.033)
+          , (note FS_ 3, 0.033) ]
+  ret
+
+-- Lambdaman died
+sfxLost :: Z80 Location
+sfxLost = static "sfxLost" $ do
+  playSeq [ (note GS_ 4, 0.083)
+          , (note C_  5, 0.083)
+          , (note A_  4, 0.083)
+          , (note B_  4, 0.083)
+          , (note GS_ 4, 0.083)
+          , (note AS_ 4, 0.083)
+          , (note G_  4, 0.083)
+          , (note A_  4, 0.083)
+          , (note FS_ 4, 0.083)
+          , (note GS_ 4, 0.083)
+          , (note F_  4, 0.083)
+          , (note G_  4, 0.083)
+          , (note E_  4, 0.748) ]
+  ret
+
+-- Centipede died
+sfxWon :: Z80 Location
+sfxWon = static "sfxWon" $ do
+  playSeq [ (note G_  5, 0.222)
+          , (note F_  5, 0.111)
+          , (note D_  5, 0.222)
+          , (note C_  5, 0.111)
+          , (note D_  5, 0.222)
+          , (note F_  5, 0.333)
+          , (note AS_ 4, 0.777) ]
+  ret
