@@ -106,11 +106,11 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
 
     ld A [dead]         -- was the player killed by a segment?
     and A
-    jp NZ gameOver      -- player killed - lose a life.
+    jp NZ =<< gameOver gameStart -- player killed - lose a life.
 
     segsLeft >>= \sl -> ld A [sl] -- was the centipede killed by the player?
     cp 0
-    jp Z gameWon        -- centipede killed -- we won this time.
+    jp Z =<< gameWon gameStart -- centipede killed -- we won this time.
 
   processSegments <- labelled $ do
     ld IX =<< segmnt    -- table of segment data.
@@ -305,17 +305,6 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     pop IX
     ret
 
-  gameOver <- labelled $ do
-    call =<< sfxLost
-    ld HL . (+1) =<< centipedeScore
-    inc [HL]
-    jp gameStart
-  gameWon <- labelled $ do
-    call =<< sfxWon
-    ld HL =<< lambdamanScore
-    inc [HL]
-    jp gameStart
-
   -- Data
   (plx, ply, pbx, pby, dead) <- playerData
 
@@ -462,6 +451,20 @@ atadd = static "atadd" $ do
   ld E A              -- de=address of attributes.
   ld A [DE]           -- return with attribute in accumulator.
   ret
+
+gameOver :: Location -> Z80 Location
+gameOver gameStart = static "gameOver" $ do
+  call =<< sfxLost
+  ld HL =<< centipedeScore
+  inc [HL]
+  jp gameStart
+
+gameWon :: Location -> Z80 Location
+gameWon gameStart = static "gameWon" $ do
+  call =<< sfxWon
+  ld HL =<< lambdamanScore
+  inc [HL]
+  jp gameStart
 
 lambdamanScore :: Z80 Location
 lambdamanScore = static "lambdamanScore" $ defb [0, 0]
