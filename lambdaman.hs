@@ -13,9 +13,6 @@ import ZXSpectrum
 
 data Direction = DUp | DDown | DLeft | DRight
 
-coords :: (Word8, Word8) -> Word16
-coords (x, y) = fromIntegral x .|. fromIntegral y `shiftL` 8
-
 main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   -- Load UDGs
   ldVia HL [UDG_LOC] udgs
