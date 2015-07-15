@@ -12,10 +12,10 @@ data Direction = DUp | DDown | DLeft | DRight
 
 main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   -- Data
-  let lambdaman = "lambdaman "
-      centipede = " centipede"
-  lmName <- labelled $ defb lambdaman
-  cpName <- labelled $ defb centipede
+  let lambdamanScoreText = "lambdaman "
+      centipedeScoreText = " centipede"
+  lmName <- labelled $ defb lambdamanScoreText
+  cpName <- labelled $ defb centipedeScoreText
 
   plx  <- labelled $ defb [0]    -- player's x coordinate.
   ply  <- labelled $ defb [0]    -- player's y coordinate.
@@ -88,15 +88,15 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   call CHAN_OPEN
   setCursorPos (0, 21)
   ld DE lmName
-  ld BC . fromIntegral $ BS.length lambdaman
+  ld BC . fromIntegral $ BS.length lambdamanScoreText
   call PR_STRING
   ld BC [lambdamanScore]
   call OUT_NUM_1
-  setCursorPos (fromIntegral $ 31 - 3 - BS.length centipede, 21)
+  setCursorPos (fromIntegral $ 31 - 3 - BS.length centipedeScoreText, 21)
   ld HL centipedeScore
   call OUT_NUM_2
   ld DE cpName
-  ld BC . fromIntegral $ BS.length centipede
+  ld BC . fromIntegral $ BS.length centipedeScoreText
   call PR_STRING
 
   -- Initialise
