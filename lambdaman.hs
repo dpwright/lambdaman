@@ -1,14 +1,12 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-import Prelude   hiding (and, or)
-import Data.Bits hiding (xor, bit)
-import Data.Word
-
-import qualified Data.ByteString as BS
-
 import Z80
 import ZXSpectrum
+
+import Prelude   hiding (and, or)
+import Data.Bits hiding (xor, bit)
+import qualified Data.ByteString as BS
 
 data Direction = DUp | DDown | DLeft | DRight
 
