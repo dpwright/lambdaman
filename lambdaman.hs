@@ -4,7 +4,6 @@
 import Prelude   hiding (and, or)
 import Data.Bits hiding (xor, bit)
 import Data.Word
-import Control.Monad (replicateM_)
 
 import qualified Data.ByteString as BS
 
@@ -69,7 +68,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   -- byte 2 = x (vertical) coordinate.
   -- byte 3 = y (horizontal) coordinate.
   let numseg = 10
-  segmnt <- labelled . replicateM_ (fromIntegral numseg) $ defb [0,0,0]
+  segmnt   <- labelled $ defb (replicate (fromIntegral numseg * 3) 0)
   segsLeft <- labelled $ defb [numseg]
 
   beginExecution
