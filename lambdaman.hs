@@ -14,6 +14,66 @@ import ZXSpectrum
 data Direction = DUp | DDown | DLeft | DRight
 
 main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
+  -- Data
+  let lambdaman = "lambdaman "
+      centipede = " centipede"
+  lmName <- labelled $ defb lambdaman
+  cpName <- labelled $ defb centipede
+
+  plx  <- labelled $ defb [0]    -- player's x coordinate.
+  ply  <- labelled $ defb [0]    -- player's y coordinate.
+  pbx  <- labelled $ defb [0xff] -- player's bullet coordinates.
+  pby  <- labelled $ defb [0xff]
+  dead <- labelled $ defb [0]    -- flag - player dead when non-zero.
+
+  lambdamanScore <- labelled $ defb [0, 0]
+  centipedeScore <- labelled $ defb [0, 0]
+
+  udgs <- labelled $ do
+    udg [ "        "
+        , " ##     "
+        , "   #    "
+        , "   #    "
+        , "   ##   "
+        , "  # #   "
+        , " #   #  "
+        , " #    # "]
+    udg [ "        "
+        , "        "
+        , "   ##   "
+        , "  ####  "
+        , " ###### "
+        , "   ##   "
+        , "        "
+        , "        "]
+    udg [ "        "
+        , "   ##   "
+        , "  ####  "
+        , " ###### "
+        , " ###### "
+        , "  ####  "
+        , "   ##   "
+        , "        "]
+    udg [ "   ##   "
+        , "   ##   "
+        , "   ##   "
+        , "   ##   "
+        , "   ##   "
+        , "   ##   "
+        , "  ####  "
+        , " # ## # "]
+
+  -- Table of segments.
+  -- Format: 3 bytes per entry, 10 segments.
+  -- byte 1: 255=segment off, 0=left, 1=right.
+  -- byte 2 = x (vertical) coordinate.
+  -- byte 3 = y (horizontal) coordinate.
+  let numseg = 10
+  segmnt <- labelled . replicateM_ (fromIntegral numseg) $ defb [0,0,0]
+  segsLeft <- labelled $ defb [numseg]
+
+  beginExecution
+
   -- Load UDGs
   ldVia HL [UDG_LOC] udgs
 
@@ -492,63 +552,4 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
             , (note F_  5, 0.333)
             , (note AS_ 4, 0.777) ]
     ret
-
-  -- Data
-  let lambdaman = "lambdaman "
-      centipede = " centipede"
-  lmName <- labelled $ defb lambdaman
-  cpName <- labelled $ defb centipede
-
-  plx  <- labelled $ defb [0]    -- player's x coordinate.
-  ply  <- labelled $ defb [0]    -- player's y coordinate.
-  pbx  <- labelled $ defb [0xff] -- player's bullet coordinates.
-  pby  <- labelled $ defb [0xff]
-  dead <- labelled $ defb [0]    -- flag - player dead when non-zero.
-
-  lambdamanScore <- labelled $ defb [0, 0]
-  centipedeScore <- labelled $ defb [0, 0]
-
-  udgs <- labelled $ do
-    udg [ "        "
-        , " ##     "
-        , "   #    "
-        , "   #    "
-        , "   ##   "
-        , "  # #   "
-        , " #   #  "
-        , " #    # "]
-    udg [ "        "
-        , "        "
-        , "   ##   "
-        , "  ####  "
-        , " ###### "
-        , "   ##   "
-        , "        "
-        , "        "]
-    udg [ "        "
-        , "   ##   "
-        , "  ####  "
-        , " ###### "
-        , " ###### "
-        , "  ####  "
-        , "   ##   "
-        , "        "]
-    udg [ "   ##   "
-        , "   ##   "
-        , "   ##   "
-        , "   ##   "
-        , "   ##   "
-        , "   ##   "
-        , "  ####  "
-        , " # ## # "]
-
-  -- Table of segments.
-  -- Format: 3 bytes per entry, 10 segments.
-  -- byte 1: 255=segment off, 0=left, 1=right.
-  -- byte 2 = x (vertical) coordinate.
-  -- byte 3 = y (horizontal) coordinate.
-  let numseg = 10
-  segmnt <- labelled . replicateM_ (fromIntegral numseg) $ defb [0,0,0]
-  segsLeft <- labelled $ defb [numseg]
-
   end
