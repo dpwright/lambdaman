@@ -252,18 +252,6 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     call NC fire
     ret
 
-  processSegments <- labelled $ do
-    ld IX segmnt        -- table of segment data.
-    decLoopB 10 $ do
-      push BC
-      ld A [IX]         -- is segment switched on?
-      inc A             -- 255=off  increments to zero.
-      call NZ proseg    -- it's active  process segment.
-      pop BC
-      ld DE 3           -- 3 bytes per segment.
-      add IX DE         -- get next segment in ix registers.
-    ret
-
   let checkMushroom direction = do
         let move DLeft  = dec C; move DRight = inc C
             move DUp    = dec B; move DDown  = inc B
@@ -387,6 +375,18 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
   -- this routine is called prior to display and deletion of bullets.
   bullxy <- labelled $ do
     setCursorPos ([pbx], [pby])
+    ret
+
+  processSegments <- labelled $ do
+    ld IX segmnt        -- table of segment data.
+    decLoopB 10 $ do
+      push BC
+      ld A [IX]         -- is segment switched on?
+      inc A             -- 255=off  increments to zero.
+      call NZ proseg    -- it's active  process segment.
+      pop BC
+      ld DE 3           -- 3 bytes per segment.
+      add IX DE         -- get next segment in ix registers.
     ret
 
   segxy <- labelled $ do
