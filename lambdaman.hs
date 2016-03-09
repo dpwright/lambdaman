@@ -172,7 +172,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
 
   loopForever $ do
     -- Delete the player
-    call basexy
+    setCursorPos ([plx], [ply])
     call wspace
 
     -- Now we've deleted the player we can move him before redisplaying him
@@ -181,7 +181,7 @@ main = defaultMain "lambdaman" "lvtc.scr" . org 0x6000 $ mdo
     call vimput         -- Vim controls
 
     -- Now he's moved we can redisplay the player.
-    call basexy         -- set the x and y positions of the player.
+    setCursorPos ([plx], [ply])
     call splayr         -- show player.
 
     -- Now for the bullet.  First let's check to see if it's hit anything.
